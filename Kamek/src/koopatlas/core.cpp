@@ -137,6 +137,7 @@ bool WMInit_LoadSIAnims(void *ptr) {
 	DVD_LoadFile(GetDVDClass(), "WorldMap", "SI_propeller", 0);
 	DVD_LoadFile(GetDVDClass(), "WorldMap", "SI_star", 0);
 	DVD_LoadFile(GetDVDClass(), "Maps", "SI_hammer", 0);
+	DVD_LoadFile(GetDVDClass(), "Maps", "SI_bubble", 0);
 
 	DVD_LoadFile(GetDVDClass(), "Object", "cobCourse", 0);
 	DVD_LoadFile(GetDVDClass(), "Object", "I_kinoko_bundle", 0);
@@ -231,7 +232,7 @@ bool WMInit_SetupExtra(void *ptr) {
 	}
 
 	// next: items for the Powerup screen
-	for (int i = 0; i < 8; i++) {
+	for (int i = 0; i < 9; i++) {
 		void *obj = CreateChildObject(WM_ITEM, wm, i, 0, 0);
 		wm->stockItem->newItemPtr[i] = obj;
 	}
@@ -462,6 +463,7 @@ int dScKoopatlas_c::onDelete() {
 	DVD_FreeFile(GetDVDClass2(), "SI_propeller");
 	DVD_FreeFile(GetDVDClass2(), "SI_star");
 	DVD_FreeFile(GetDVDClass2(), "SI_hammer");
+	DVD_FreeFile(GetDVDClass2(), "SI_bubble");
 
 	DVD_FreeFile(GetDVDClass2(), "cobCourse");
 	DVD_FreeFile(GetDVDClass2(), "I_kinoko_bundle");

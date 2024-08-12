@@ -17,6 +17,7 @@ void dWMShop_c::ShopModel_c::setupItem(float x, float y, ItemTypes type) {
 		{ "I_kinoko_bundle","g3d/I_mini_kinoko.brres", 		"I_mini_kinoko", 		"wait2" },
 		{ "I_star", 		"g3d/I_star.brres", 			"I_star", 				"wait2" },
 		{ "I_hammer", 		"g3d/I_fireflower.brres",		"I_fireflower",			"wait2" },
+		{ "I_bubble",		"g3d/I_fireflower.brres",		"I_fireflower",			"wait2" },
 		{ "I_kinoko_bundle","g3d/I_life_kinoko.brres", 		"I_life_kinoko", 		"wait2" },
 	};
 
@@ -417,7 +418,8 @@ void dWMShop_c::endState_HideWait() {
 	// 5 = MiniShroom	- 2
 	// 6 = Starman		- 2
 		// 7 = Hammer		- 3
-	// 8 = 1-ups		- 2
+	// 8 = Bubble			- 3
+	// 9 = 1-ups		- 2
 //
 // Format: 1coin, 1coin, 2coins, 3coins, 5coins[3] (Value 6-9), 8coins[5] (Value 10-15)
 //
@@ -608,7 +610,7 @@ void dWMShop_c::buyItem(int item) {
 	for (int i = 0; i < invCount; i++)
 		appliedItems[(int)Inventory[shopKind][invStartIndex+i]]++;
 
-	for (int i = 0; i < 8; i++) {
+	for (int i = 0; i < 9; i++) {
 		block->powerups_available[i] += appliedItems[i];
 
 		if (block->powerups_available[i] > 99)

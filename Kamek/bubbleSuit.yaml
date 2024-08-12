@@ -1,0 +1,15 @@
+---
+#Replaces Actor 15 WM_TEST
+#Replaces Actor 16 WM_TEST2
+
+source_files: [../src/bubbleSuit.cpp]
+hooks:
+  - name: BubbleBuild
+    type: add_func_pointer
+    src_addr_pal: 0x8098FEA0
+    target_func: 'dSuitBubble_c::build(void)'
+
+  - name: BubbleCoinBuild
+    type: add_func_pointer
+    src_addr_pal: 0x8098FEAC
+    target_func: 'dBubbleCoin_c::build(void)'

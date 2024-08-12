@@ -1,4 +1,21 @@
 SECTIONS {
+	ContinueFromAlternateQBlock = 0x80022858;
+	ContinueFromThatFix = 0x800D47A0;
+	ContinueFromAlternateQBlock2 = 0x80022870;
+	ContinueFromAlternateQBlock3 = 0x80022b5c;
+	ContinueFromAlternateQBlock4 = 0x80022b74;
+	QBlockTable = 0x802EE620;
+	QBlockTable2 = 0x802ee668;
+
+	SI_Kinoko = 0x8098e044;
+	SI_Fireflower = 0x8098e050;
+	SI_Propeller = 0x8098e060;
+	SI_Iceflower = 0x8098e070;
+	SI_Penguin = 0x8098e080;
+	SI_Star = 0x8098e090;
+
+	ContinueFromLoadingCRSIN = 0x8091EC78;
+
 	instance__7StageC4 = 0x8042A2B8;
 
 	GetResNodeNumEntries__Q34nw4r3g3d6ResMdlCFv = 0x8023B4A0;

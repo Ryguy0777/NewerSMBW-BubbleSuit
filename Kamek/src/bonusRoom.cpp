@@ -160,7 +160,7 @@ int Songs[16][4][16][3] = {
 	}
 };
 
-const char* Prizes[10][4] = { 
+const char* Prizes[11][4] = { 
 	{ "I_kinoko", 		"g3d/I_kinoko.brres", 			"I_kinoko", 			"wait2" },
 	{ "I_fireflower", 	"g3d/I_fireflower.brres", 		"I_fireflower", 		"wait2" },
 	{ "I_propeller", 	"g3d/I_propeller.brres",	 	"I_propeller_model", 	"wait2" },
@@ -168,9 +168,10 @@ const char* Prizes[10][4] = {
 	{ "I_penguin", 		"g3d/I_penguin.brres", 			"I_penguin", 			"wait2" },
 	{ "I_kinoko_bundle","g3d/I_mini_kinoko.brres", 		"I_mini_kinoko", 		"wait2" },
 	{ "I_star", 		"g3d/I_star.brres", 			"I_star", 				"wait2" },
-	{ "I_hammer", 		"g3d/I_fireflower.brres", 		"I_fireflower", 			"wait2" },
+	{ "I_hammer", 		"g3d/I_fireflower.brres", 		"I_fireflower", 		"wait2" },
 	{ "I_kinoko_bundle","g3d/I_life_kinoko.brres", 		"I_life_kinoko", 		"wait2" },
-	{ "obj_coin", 		"g3d/obj_coin.brres", 			"obj_coin", 			"wait2" }
+	{ "obj_coin", 		"g3d/obj_coin.brres", 			"obj_coin", 			"wait2" },
+	{ "I_bubble", 		"g3d/I_fireflower.brres", 		"I_fireflower", 		"wait2" }
 };
 
 const char* Notes[24] = {
@@ -207,6 +208,7 @@ const char* SAarcNameList [] = {
 	"block_light",
 	"block_light_color",
 	"I_kinoko_bundle",
+	"I_bubble",
 	NULL	
 };
 
@@ -538,6 +540,7 @@ int dSingAlong::onCreate() {
 	this->Powerups[7] = 0; // Hammer
 	this->Powerups[8] = 0; // 1-ups
 	this->Powerups[9] = 0; // Coins
+	this->Powerups[10] = 0;// Bubble
 
 	// Create and prepare the blocks
 	S16Vec rot = (S16Vec){0,0,0};
@@ -959,7 +962,7 @@ void dSingAlong::addPowerups() {
 	SaveFile *file = GetSaveFile();
 	SaveBlock *block = file->GetBlock(file->header.current_file);
 
-	for (int i = 0; i < 8; i++) { // Change this to 8 to support hammers
+	for (int i = 0; i < 9; i++) { // Change this to 9 to support hammers and bubbles
 		block->powerups_available[i] = block->powerups_available[i] + this->Powerups[i];
 
 		if (block->powerups_available[i] > 99) { block->powerups_available[i] = 99; }

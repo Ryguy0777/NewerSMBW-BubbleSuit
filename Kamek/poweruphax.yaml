@@ -1,6 +1,17 @@
 ---
-source_files: [../src/poweruphax.S, ../src/poweruphax.cpp]
+source_files: [../src/poweruphax.S, ../src/poweruphax.cpp, ../src/loading.S]
 hooks:
+  - name: LoadThisShit
+    type: branch_insn
+    branch_type: b
+    src_addr_pal: 0x8091EC74
+    target_func: 'LoadThisShit'
+
+  - name: LoadThisShittyCount
+    type: patch
+    addr_pal: 0x8091EC6C
+    data: '38c00027' #original: 38c00023
+
   - {name: HammerDontTouchMario, type: nop_insn, area_pal: 0x8001DFDC}
   - {name: HammerDontTouchYoshi, type: nop_insn, area_pal: 0x8001E02C}
   - name: GetInfoFromDumbTable
@@ -68,11 +79,11 @@ hooks:
     addr_pal: 0x807FCBA8
     data: '3860 045C'
     
-  - name: ThrowHammer
+  - name: ThrowProjectile
     type: branch_insn
     branch_type: b
     src_addr_pal: 0x8013BEE4
-    target_func: 'ThrowHammer'
+    target_func: 'ThrowNewProjectile'
     
   - name: MoreProjectileStuff_Fix
     type: branch_insn
@@ -108,26 +119,36 @@ hooks:
     type: patch
     addr_pal: 0x80022884
     data: '281F00AA'
+  
+  - name: QBlockItemFix2
+    type: patch
+    addr_pal: 0x8002287C
+    data: '281F00AA'
 
   - name: QBlockMPItemFix
     type: patch
     addr_pal: 0x80022B88
     data: '280500AA'
+  
+  - name: QBlockMPItemFix2
+    type: patch
+    addr_pal: 0x80022B80
+    data: '280500AA'
     
   - name: FixMushroomIfSmallBlock
     type: patch
     addr_pal: 0x800221ac
-    data: '2800 0003'
+    data: '2800 0004'
     
   - name: SomeEnItemFix
     type: patch
     addr_pal: 0x80A2BE98
-    data: '2800 0003'
+    data: '2800 0004'
     
   - name: MushroomEnItemFix
     type: patch
     addr_pal: 0x80A28598
-    data: '2800 0003'
+    data: '2800 0004'
     
   - name: DisablePowerupValidityCheck
     type: patch
@@ -142,36 +163,36 @@ hooks:
     type: patch
     addr_pal: 0x802F5AEC
     data: '00000001'
-    
-    #It's not actually a function but who cares?
-  - name: AlwaysLoadBrosArc
-    type: add_func_pointer
-    src_addr_pal: 0x8098C488
-    target_func: 'BrosArcFileName'
-
   - name: LoadHammerFromHammerMArc
     type: patch
     addr_pal: 0x8095CDD4
     data: '68616D6D65724D00' # "hammerM\0"
     
-  - name: AlwaysLoadBrosArc
-    type: add_func_pointer
-    src_addr_pal: 0x8098C490
-    target_func: 'I_hammerArcFilename'
-    
   - name: ChangeHammerBrres
     type: add_func_pointer
     src_addr_pal: 0x80AF0FA8
+    target_func: 'I_hammerResFile'
+  - name: ChangeBubbleBrres
+    type: add_func_pointer
+    src_addr_pal: 0x80af0fb0
     target_func: 'I_hammerResFile'
     
   - name: ChangeHammerArc
     type: add_func_pointer
     src_addr_pal: 0x80AF0ECC
     target_func: 'I_hammerArcFilename'
+  - name: ChangeBubbleArc
+    type: add_func_pointer
+    src_addr_pal: 0x80af0ed4
+    target_func: 'I_bubbleArcFilename'
     
   - name: ChangeHammerModel
     type: add_func_pointer
     src_addr_pal: 0x80AF1000
+    target_func: 'I_hammerModelName'
+  - name: ChangeBubbleModel
+    type: add_func_pointer
+    src_addr_pal: 0x80af1008
     target_func: 'I_hammerModelName'
 
   - name: DisableHat99Thing
@@ -188,7 +209,7 @@ hooks:
     type: branch_insn
     branch_type: bl
     src_addr_pal: 0x80A285FC
-    target_func: 'TryToGiveMarioHammerSuit'
+    target_func: 'TryToGiveMarioPowerup'
     
   - name: WeirdAnimLoadHack
     type: branch_insn
@@ -200,6 +221,11 @@ hooks:
     type: add_func_pointer
     src_addr_pal: 0x80AF117C
     target_func: 'SetHammerToEnItemDCA'
+
+  - name: SetBubbleToEnItemDCA
+    type: add_func_pointer
+    src_addr_pal: 0x80af11a4
+    target_func: 'SetBubbleToEnItemDCA'
 
   - name: SetHammerToEnItemDCASpecial
     type: branch_insn
@@ -724,26 +750,47 @@ hooks:
     type: add_func_pointer
     target_func: 'I_hammerArcFilename'
     src_addr_pal: 0x80951A48
+
+  - name: AddBFToBattleItem_AddBubbleFlowerArcName
+    type: add_func_pointer
+    target_func: 'I_bubbleArcFilename'
+    src_addr_pal: 0x80951A4C
+
   - name: AddHSToBattleItem_FixKinokoBrres1
     type: add_func_pointer
     target_func: 'g3d_I_kinoko_brres'
     src_addr_pal: 0x80951ACC
+
   - name: AddHSToBattleItem_FixKinokoBrres2
     type: add_func_pointer
     target_func: 'g3d_I_kinoko_brres'
     src_addr_pal: 0x80951ADC
+
   - name: AddHSToBattleItem_AddBrres
     type: add_func_pointer
     target_func: 'I_hammerResFile'
     src_addr_pal: 0x80951AE8
+
+  - name: AddBSToBattleItem_AddBubbleBrres
+    type: add_func_pointer
+    target_func: 'I_hammerResFile'
+    src_addr_pal: 0x80951AEC
+
   - name: AddHSToBattleItem_FixPropellerModel
     type: add_func_pointer
     target_func: 'I_propeller_model'
     src_addr_pal: 0x80951B04
+
   - name: AddHSToBattleItem_AddModel
     type: add_func_pointer
     target_func: 'I_hammerModelName'
     src_addr_pal: 0x80951B18
+
+  - name: AddBSToBattleItem_AddBubbleModel
+    type: add_func_pointer
+    target_func: 'I_hammerModelName'
+    src_addr_pal: 0x80951B1C
+
   - name: AddHSToBattleItem_FixWait2Anim
     type: branch_insn
     branch_type: bl
@@ -788,17 +835,20 @@ hooks:
 
 # STOCK ITEM BULLSHIT
 # Current size: 0x8E0
-# New size: ?
+# New size: 0x994
 # New fields:
 # - 0x8E0 : Item Pointers
-# - 0x900 : Item Counts
-# - 0x920 : Button Bases
-# - 0x940 : Icon Panes
-# - 0x960 : Icon Pictures
+# - 0x904 : Item Counts
+# - 0x928 : Button Bases
+# - 0x94C : Icon Panes
+# - 0x970 : Icon Pictures
 # New anims:
 # - 0x1E : On Hammer
 # - 0x1F : Hit Hammer
 # - 0x20 : Off Hammer
+# - 0x21 : On Bubble
+# - 0x22 : Hit Bubble
+# - 0x23 : Off Bubble
 #
 # todo:
 # update loadlayout method
@@ -808,7 +858,7 @@ hooks:
   - name: ExpandStockItemStruct
     type: patch
     addr_pal: 0x807AF378
-    data: '38600980'
+    data: '38600994'
 
   - name: SILayoutGroupParams
     type: branch_insn
@@ -826,10 +876,10 @@ hooks:
     type: nop_insn
     area_pal: [0x807af790, 0x807af794]
 
-  - name: GetCountsFor8Powerups
+  - name: GetCountsFor9Powerups
     type: patch
     addr_pal: 0x807AF7A8
-    data: '2C1C0008 901E 0900'
+    data: '2C1C0009 901E 0904'
 
   - name: HideItemsByDefault
     type: branch_insn
@@ -837,9 +887,9 @@ hooks:
     src_addr_pal: 0x807AF7B8
     target_func: 'HideItemsByDefault'
 
-  - {name: FixAnimID30, type: patch, addr_pal: 0x807AFB08, data: '2C04 0020'}
-  - {name: FixAnimID30, type: patch, addr_pal: 0x807AFB20, data: '3800 0020'}
-  - {name: FixAnimID30, type: patch, addr_pal: 0x807B0994, data: '3800 0020'}
+  - {name: FixAnimID30, type: patch, addr_pal: 0x807AFB08, data: '2C04 0023'}
+  - {name: FixAnimID30, type: patch, addr_pal: 0x807AFB20, data: '3800 0023'}
+  - {name: FixAnimID30, type: patch, addr_pal: 0x807B0994, data: '3800 0023'}
 
   - name: NewSetScalesThingy
     type: branch_insn
@@ -853,10 +903,10 @@ hooks:
     src_addr_pal: 0x807B01F0
     target_func: 'AddHammerPowerupFinalValue'
 
-  - {name: UpdCounts, type: patch, addr_pal: 0x807B02D8, data: '8085 0900'}
-  - {name: UpdCounts, type: patch, addr_pal: 0x807B02E0, data: '9005 0900'}
-  - {name: UpdCounts, type: patch, addr_pal: 0x807B02F0, data: '8084 0900'}
-  - {name: UpdCounts, type: patch, addr_pal: 0x807B0304, data: '8003 0900'}
+  - {name: UpdCounts, type: patch, addr_pal: 0x807B02D8, data: '8085 0904'}
+  - {name: UpdCounts, type: patch, addr_pal: 0x807B02E0, data: '9005 0904'}
+  - {name: UpdCounts, type: patch, addr_pal: 0x807B02F0, data: '8084 0904'}
+  - {name: UpdCounts, type: patch, addr_pal: 0x807B0304, data: '8003 0904'}
   - {name: UpdItemPtr, type: patch, addr_pal: 0x807B0310, data: '8063 08E0'}
 
   - name: FixStockItemEffectPlayer
@@ -881,13 +931,19 @@ hooks:
     src_addr_pal: 0x807B0840
     target_func: 'AddHammerSuitAddSound'
 
-  - {name: UpdCounts, type: patch, addr_pal: 0x807B0908, data: '8005 0900'}
-  - {name: UpMaxItems, type: patch, addr_pal: 0x807B0934, data: '2C000008'}
-  - {name: UpdCounts, type: patch, addr_pal: 0x807B0944, data: '8005 0900'}
-  - {name: UpMaxItems, type: patch, addr_pal: 0x807B0954, data: '2C000008'}
+#  - {name: UpdCounts, type: patch, addr_pal: 0x807B0908, data: '8005 0904'}
+#  - {name: UpMaxItems, type: patch, addr_pal: 0x807B0934, data: '2C000009'}
+#  - {name: UpdCounts, type: patch, addr_pal: 0x807B0944, data: '8005 0904'}
+#  - {name: UpMaxItems, type: patch, addr_pal: 0x807B0954, data: '2C000009'}
 
-  - {name: UpdCounts, type: patch, addr_pal: 0x807B0A74, data: '809D 0900'}
-  - {name: UpMaxItems, type: patch, addr_pal: 0x807B0A8C, data: '2C1B0008'}
+  - name: updateSelectOrder
+    type: branch_insn
+    branch_type: b
+    src_addr_pal: 0x807b08e0
+    target_func: 'NewItemsBeforeStarAndMini(dStockItem_c *, int *)'
+
+  - {name: UpdCounts, type: patch, addr_pal: 0x807B0A74, data: '809D 0904'}
+  - {name: UpMaxItems, type: patch, addr_pal: 0x807B0A8C, data: '2C1B0009'}
 
   - name: ResetHammerAnimOnOpen
     type: branch_insn
@@ -896,19 +952,19 @@ hooks:
     target_func: 'ResetHammerAnimOnOpen'
 
   - {name: UpdItemPtr, type: patch, addr_pal: 0x807B0B68, data: '807C 08E0'}
-  - {name: UpdCounts, type: patch, addr_pal: 0x807B0B74, data: '801C 0900'}
+  - {name: UpdCounts, type: patch, addr_pal: 0x807B0B74, data: '801C 0904'}
   - {name: UpdItemPtr, type: patch, addr_pal: 0x807B0B80, data: '807C 08E0'}
   - {name: UpdItemPtr, type: patch, addr_pal: 0x807B0B8C, data: '807C 08E0'}
-  - {name: UpMaxItems, type: patch, addr_pal: 0x807B0B9C, data: '2C1D0008'}
+  - {name: UpMaxItems, type: patch, addr_pal: 0x807B0B9C, data: '2C1D0009'}
 
-  - {name: UpdCounts, type: patch, addr_pal: 0x807B0C28, data: '8003 0900'}
+  - {name: UpdCounts, type: patch, addr_pal: 0x807B0C28, data: '8003 0904'}
 
-  - {name: UpdCountsOffs, type: patch, addr_pal: 0x807B0C64, data: '801E 0900'}
-  - {name: UpdCountsOffs, type: patch, addr_pal: 0x807B0C78, data: '801E 0904'}
-  - {name: UpdCountsOffs, type: patch, addr_pal: 0x807B0C90, data: '801E 0908'}
-  - {name: UpdCountsOffs, type: patch, addr_pal: 0x807B0CA8, data: '801E 090C'}
-  - {name: UpdCountsOffs, type: patch, addr_pal: 0x807B0CC0, data: '801E 0910'}
-  - {name: UpdCountsOffs, type: patch, addr_pal: 0x807B0CD8, data: '801E 0914'}
+  - {name: UpdCountsOffs, type: patch, addr_pal: 0x807B0C64, data: '801E 0904'}
+  - {name: UpdCountsOffs, type: patch, addr_pal: 0x807B0C78, data: '801E 0908'}
+  - {name: UpdCountsOffs, type: patch, addr_pal: 0x807B0C90, data: '801E 090C'}
+  - {name: UpdCountsOffs, type: patch, addr_pal: 0x807B0CA8, data: '801E 0910'}
+  - {name: UpdCountsOffs, type: patch, addr_pal: 0x807B0CC0, data: '801E 0914'}
+  - {name: UpdCountsOffs, type: patch, addr_pal: 0x807B0CD8, data: '801E 0918'}
   - name: PickHammerAsPossibleStartChoice
     type: branch_insn
     branch_type: b
@@ -946,7 +1002,7 @@ hooks:
     target_func: 'DoSISelectCursor'
 
   - {name: UpdItemPtr, type: patch, addr_pal: 0x807B1478, data: '807E 08E0'}
-  - {name: UpMaxItems, type: patch, addr_pal: 0x807B148C, data: '2C1D0008'}
+  - {name: UpMaxItems, type: patch, addr_pal: 0x807B148C, data: '2C1D0009'}
 
   - name: ChooseHitButtonAnim
     type: branch_insn
@@ -968,15 +1024,18 @@ hooks:
 
 # THE WONDERS OF STOCK ITEM SHADOW
 # Current size: 0x280
-# New size: 0x290
+# New size: 0x2A0
 # New fields:
-# - 0x284: Hammer value textbox
-# - 0x288: Hammer X textbox
-# - 0x28C: Hammer shadow
+# - 0x288: Hammer value textbox
+# - 0x28C: Hammer X textbox
+# - 0x290: Hammer shadow
+# - 0x294: Bubble value textbox
+# - 0x298: Bubble X textbox
+# - 0x29C: Bubble shadow
   - name: ExpandStockItemShadowStruct
     type: patch
     addr_pal: 0x807B2038
-    data: '38600290'
+    data: '386002A0'
 
   - name: SISLayoutExtraStuffs
     type: branch_insn
@@ -996,6 +1055,10 @@ hooks:
     type: add_func_pointer
     src_addr_pal: 0x80983334
     target_func: 'I_hammerArcFilename'
+  - name: AddIBubble1
+    type: add_func_pointer
+    src_addr_pal: 0x80983338
+    target_func: 'I_bubbleArcFilename'
   - name: ReplaceLostPropellerModel
     type: add_func_pointer
     src_addr_pal: 0x80983350
@@ -1009,22 +1072,32 @@ hooks:
     type: add_func_pointer
     src_addr_pal: 0x809833D4
     target_func: 'SI_hammer'
+  - name: AddPtrToSIBubble
+    type: add_func_pointer
+    src_addr_pal: 0x809833D8
+    target_func: 'SI_bubble'
 
-  - name: SkawoHatesMe
+  - name: WMItem_AddBrres
     type: branch_insn
     branch_type: bl
     src_addr_pal: 0x808D4CCC
-    target_func: 'SkawoHatesMe'
-  - name: SkawoStillHatesMe
+    target_func: 'WMItem_AddBrres'
+  - name: WMItem_AddMdl0
     type: branch_insn
     branch_type: bl
     src_addr_pal: 0x808D4CEC
-    target_func: 'SkawoStillHatesMe'
+    target_func: 'WMItem_AddMdl0'
 
 
   - name: PatchMultiplayerHits
     type: patch
     addr_pal: 0x8001E668
     data: '38A00008'
+  
+  - name: TryToFixPat0
+    type: branch_insn
+    branch_type: b
+    src_addr_pal: 0x800D479C
+    target_func: 'TryToFixThis'
 
 

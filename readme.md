@@ -1,4 +1,12 @@
 # NEWER Super Mario Bros. Wii
+## Bubble Suit
+
+This version of NewerSMBW has the bubble flower from SMB Wonder added.
+It is unfinished, and likely will not be finished (by me).
+Check bubbleSuit.cpp for a list of things I wanted to improve.
+To install, copy the folders from the "Game" folder into a fresh NewerSMBW install.
+DO not expect any support for bugs you encounter.
+
 ## Source Code Public Release
 
 ### Preamble

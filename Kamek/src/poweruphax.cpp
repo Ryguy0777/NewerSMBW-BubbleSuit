@@ -1,7 +1,7 @@
 #include <common.h>
 #include <game.h>
 #include <g3dhax.h>
-
+#include <sfx.h>
 
 void ThwompHammer(dEn_c *thwomp, ActivePhysics *apThis, ActivePhysics *apOther) {
 	if (thwomp->name == 0x51) {
@@ -145,7 +145,7 @@ void dStockItem_c::setScalesOfSomeThings() {
 	}
 
 
-	for (int i = 0; i < 8; i++) {
+	for (int i = 0; i < 9; i++) {
 		u8 *item = (u8*)newItemPtr[i];
 
 		nw4r::lyt::Pane *icon = newIconPanes[i];
@@ -176,6 +176,62 @@ void dStockItem_c::setScalesOfSomeThings() {
 	for (int i = 0; i < 7; i++)
 		shadow->buttonBases[i]->scale = newButtonBase[i]->scale;
 	shadow->hammerButtonBase->scale = newButtonBase[7]->scale;
+	shadow->bubbleButtonBase->scale = newButtonBase[8]->scale;
 }
 
+extern "C" void *SoundRelatedClass;
+extern "C" void *MapSoundPlayer(void *SoundRelatedClass, int soundID, int unk);
+
+void NewItemsBeforeStarAndMini(dStockItem_c *self, int *count) {
+	int selectedMaybe;
+
+	if (self->actionTaken == 1) { //going left
+		while (*count > -1) {
+			switch (*count) {
+				default:
+					selectedMaybe = *count - 1;
+					*count = selectedMaybe;
+					break;
+				case 5: //mini
+					selectedMaybe = 8;
+					*count = 8; //go to bubble
+					break;
+				case 7: //hammer
+					selectedMaybe = 4;
+					*count = 4; //go to pengi
+					break;
+			}
+			if ((selectedMaybe > -1) && (self->newCounts[selectedMaybe] != 0)) {
+				return;
+			}
+		}
+	} else { //going right
+		while (*count < 9) {
+			switch (*count) {
+				default:
+					selectedMaybe = *count + 1;
+					*count = selectedMaybe;
+					break;
+				case 4: //pengi
+					selectedMaybe = 7;
+					*count = 7; //go to hammer
+					break;
+				case 8: //bubble
+					selectedMaybe = 5;
+					*count = 5; //go to mini
+					break;
+				case 6:
+					*count = self->selectedItem;
+					MapSoundPlayer(SoundRelatedClass, SE_SYS_INVALID, 1);
+					return;
+			}
+			if ((selectedMaybe < 9) && (self->newCounts[selectedMaybe] != 0)) {
+				return;
+			}
+		}
+	}
+	*count = self->selectedItem;
+	MapSoundPlayer(SoundRelatedClass, SE_SYS_INVALID, 1);
+	return;
+}
 

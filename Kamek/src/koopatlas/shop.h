@@ -46,6 +46,7 @@ class dWMShop_c : public dActor_c {
 			MINI_SHROOM,
 			STARMAN,
 			HAMMER,
+			BUBBLE,
 			ONE_UP,
 			ITEM_TYPE_COUNT
 		};

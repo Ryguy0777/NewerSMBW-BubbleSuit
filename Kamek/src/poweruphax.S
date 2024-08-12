@@ -256,6 +256,9 @@ PlumberSetPowerupFix:
 	
 	cmpwi r0, 7
 	beq doHammerTex
+
+	cmpwi r0, 8
+	beq doBubbleTex
 	
 	li r4, 0
 	b gotTexID
@@ -270,7 +273,12 @@ doIceTex:
 	
 doHammerTex:
 	li r4, 3
+	b gotTexID
 	
+doBubbleTex:
+	li r4, 4
+	b gotTexID
+
 gotTexID:
 	lwz r12, 0(r31)
 	mr r3, r31
@@ -292,6 +300,9 @@ PlumberSetPowerupFix2:
 	
 	cmpwi r31, 7
 	beq doHammerTex2
+
+	cmpwi r31, 8
+	beq doBubbleTex2
 	
 	li r4, 0
 	b gotTexID2
@@ -306,6 +317,11 @@ doIceTex2:
 	
 doHammerTex2:
 	li r4, 3
+	b gotTexID2
+
+doBubbleTex2:
+	li r4, 4
+	b gotTexID2
 	
 gotTexID2:
 	lwz r3, 0x2A64(r30)
@@ -349,16 +365,38 @@ DontSetHammer:
 	addi sp, sp, 0x10
 	blr
 
+.global SetBubbleToEnItemDCA
+SetBubbleToEnItemDCA:
+	bl daEnItem_c__GetWhetherPlayerCanGetPowerupOrNot
+	cmpwi r3, 1
+	bne DontSetBubble
+	
+	li r0, 7
+	sth r0, 0xDCA(r31)
+	
+DontSetBubble:
+	lwz r0, 0x14(sp)
+	lwz r31, 0xC(sp)
+	mtlr r0
+	addi sp, sp, 0x10
+	blr
+
 .global SetHammerToEnItemDCASpecial
 SetHammerToEnItemDCASpecial:
 	cmplwi r4, 0x19
-	b _not19
+	bne _not19
 	li r0, 0xD
 	sth r0, 0xDCA(r3)
 _not19:
 	cmplwi r4, 6
-	bnelr
+	bne notHammerEither
 	li r0, 5
+	sth r0, 0xDCA(r3)
+	blr
+notHammerEither:
+	cmplwi r4, 0x10
+	bnelr
+	li r0, 7
 	sth r0, 0xDCA(r3)
 	blr
 
@@ -407,12 +445,13 @@ dontConsiderPowerdown:
 
 	b returnFromPowerupSoundChange
 
-
 .global WeirdAnimLoadHack
 WeirdAnimLoadHack:
 	cmplwi r4, 5 #hammersuit
 	beqlr
 	cmplwi r4, 6 #1up
+	beqlr
+	cmplwi r4, 7 #Bubble
 	beqlr
 	# neither of those succeeded
 	crclr 4*cr0+eq
@@ -420,20 +459,34 @@ WeirdAnimLoadHack:
 
 
 
-.global TryToGiveMarioHammerSuit
-TryToGiveMarioHammerSuit:
+.global TryToGiveMarioPowerup
+TryToGiveMarioPowerup:
 	stwu sp, -0x10(sp)
 	mflr r0
 	stw r0, 0x14(sp)
 	
 	# check the obtained item number
+	b checkDCA
+
+checkDCA:
 	cmplwi r3, 5
-	bne IsntGettingHammerSuit
-	
-	# check the current player powerup
+	beq doCheckForHammer
+	cmplwi r3, 7
+	beq doCheckForBubble
+	b IsntGettingAnySuit
+
+doCheckForHammer:
 	cmplwi r4, 7
 	bne DontHaveHammerSuit
 	
+	li r28, 0
+	li r29, 2
+	b ReturnFromTTGMHS
+
+doCheckForBubble:
+	cmplwi r4, 8
+	bne DontHaveBubble
+
 	li r28, 0
 	li r29, 2
 	b ReturnFromTTGMHS
@@ -447,8 +500,19 @@ DontHaveHammerSuit:
 	beq ReturnFromTTGMHS
 	
 	li r29, 1
+	b ReturnFromTTGMHS
 	
-IsntGettingHammerSuit:
+DontHaveBubble:
+	mr r3, r30
+	li r4, 8
+	bl dAcPy_c__ChangePowerupWithAnimation
+	
+	cmpwi r3, 0
+	beq ReturnFromTTGMHS
+	
+	li r29, 1
+	
+IsntGettingAnySuit:
 ReturnFromTTGMHS:
 	# end of function
 	lwz r0, 0x14(sp)
@@ -461,15 +525,19 @@ ReturnFromTTGMHS:
 
 
 
-.global ThrowHammer
-ThrowHammer:
-	# continues on from PlayerProjectileShooting
-	
-	# get powerup
+.global ThrowNewProjectile
+ThrowNewProjectile:
 	lwz r3, 0x1090(r30)
+
 	cmplwi r3, 7
-	bne ReturnFromThrowHammer
+	beq ThrowHammer
+
+	cmplwi r3, 8
+	beq ThrowBubble
 	
+	b ReturnFromThrowProjectile
+
+ThrowHammer:
 	mr r3, r30
 	li r4, 498
 	li r5, 0
@@ -504,8 +572,37 @@ ThrowHammer:
 	lwz r12, 0x8C(r12)
 	mtctr r12
 	bctrl
+	b ReturnFromThrowProjectile
+
+ThrowBubble:
+	mr r3, r30
+	li r4, 498
+	li r5, 0
+	bl PlayPlayerSound
 	
-ReturnFromThrowHammer:
+
+	li r3, 0xF
+
+	lwz r4, 0x38D(r30)		# Settings
+	addi r4, r4, 50
+
+	addi r5, sp, 0x2C		# Position
+	li r6, 0				# Rotation
+	lbz r7, 0x38F(r30)		# Layer
+	bl CreateActor
+
+	# Store player ID
+	lwz r4, 0(r30)
+	stw r4, 0x540(r3)
+	
+	# store player number, but add 0x100 to differentiate it from 0
+	lbz r4, 0x38D(r30)
+	addi r4, r4, 0x100
+	stw r4, 0x544(r3)
+
+	b ReturnFromThrowProjectile
+
+ReturnFromThrowProjectile:
 	lwz r0, 0xC4(sp)
 	psq_l f31, 0xB8(sp), 1, 0
 	lfd f31, 0xB0(sp)
@@ -523,7 +620,7 @@ ReturnFromThrowHammer:
 MoreProjectileStuff_Fix:
 	lwz r3, 0x1090(r31)
 	cmplwi r3, 7
-	bne ReturnFromMPSFix
+	blt ReturnFromMPSFix
 	
 	mr r3, r31
 	li r4, 1
@@ -542,17 +639,27 @@ ReturnFromMPSFix:
 ProjectileShootCheck_Fix:
 	lwz r3, 0x1090(r31)
 	cmplwi r3, 7
-	bne Return0fromPSCFix
+	blt Return0fromPSCFix
 	
+	cmplwi r3, 7
+	beq DoHammerFromProjectileShootCheck_Fix
+
+	cmplwi r3, 8
+	beq DoBubbleFromProjectileShootCheck_Fix
+
+DoHammerFromProjectileShootCheck_Fix:
 	lbz r3, 0x38D(r31)
 	li r4, 0
 	extsb r3, r3
 	bl CheckHammerLimit
-	
-	cmpwi r3, 0
-	beq Return0fromPSCFix
-	
-	b Return1fromPSCFix
+	b FinishFromProjectileShootCheck_Fix
+
+DoBubbleFromProjectileShootCheck_Fix:
+	lbz r3, 0x38D(r31)
+	li r4, 0
+	extsb r3, r3
+	bl CheckBubbleLimit
+	b FinishFromProjectileShootCheck_Fix
 
 Return0fromPSCFix:
 	li r3, 0
@@ -567,6 +674,11 @@ ReturnFromPSCFix:
 	mtlr r0
 	addi sp, sp, 0x10
 	blr
+
+FinishFromProjectileShootCheck_Fix:
+	cmpwi r3, 0
+	beq Return0fromPSCFix
+	b Return1fromPSCFix
 
 
 .global CheckHammerLimit
@@ -626,11 +738,68 @@ gotHammerStatus:
 
 
 
+.global CheckBubbleLimit
+CheckBubbleLimit:
+	stwu sp, -0x10(sp)
+	mflr r0
+	stw r0, 0x14(sp)
+	stw r31, 0xC(sp)
+	stw r30, 0x8(sp)
+	
+	# r30 = player number
+	mr r30, r3
+	addi r30, r30, 0x100
+	
+	# r31 = bubble count so far
+	li r31, 0
+	
+	# search for every bubble
+	
+	li r3, 0
+	b startOrContinueLoopBubble
+loopBubble:
+	
+	lwz r4, 0x544(r3)
+	cmpw r4, r30
+	bne startOrContinueLoopBubble
+	
+	addi r31, r31, 1
+	
+startOrContinueLoopBubble:
+	mr r4, r3
+	li r3, 0xF
+	bl Actor_SearchByName
+	
+	cmpwi r3, 0
+	bne loopBubble
+	
+	# now if the current count is >= 2, return 0
+	# otherwise return 1
+	cmpwi r31, 2
+	bge tooManyBubble
+	
+	li r3, 1
+	b gotBubbleStatus
+	
+tooManyBubble:
+	li r3, 0
+	
+gotBubbleStatus:
+	lwz r0, 0x14(sp)
+	lwz r31, 0xC(sp)
+	lwz r30, 0x8(sp)
+	mtlr r0
+	addi sp, sp, 0x10
+	blr
+
+
 .extern continueToadPowerupSet
 .global ToadPowerupFix
 ToadPowerupFix:
 	cmpwi r4, 3
 	beq isHammerForToad
+	cmpwi r4, 4
+	beq isBubbleForToad
 
 	lis r8, PowerupTextures@h
 	ori r8, r8, PowerupTextures@l
@@ -642,6 +811,13 @@ ToadPowerupFix:
 isHammerForToad:
 	lis r8, ToadTextures@h
 	ori r8, r8, ToadTextures@l
+	slwi r9, r0, 2
+	lfsx f31, r8, r9
+	b continueToadPowerupSet
+
+isBubbleForToad:
+	lis r8, ToadBubbleTextures@h
+	ori r8, r8, ToadBubbleTextures@l
 	slwi r9, r0, 2
 	lfsx f31, r8, r9
 	b continueToadPowerupSet
@@ -896,7 +1072,7 @@ continueHCGRO:
 .data
 
 PowerupSounds:
-	.long 273, 274, 274, 275, 276, 277, 274, 274
+	.long 273, 274, 274, 275, 276, 277, 274, 274, 274
 
 
 SomeTable:
@@ -904,6 +1080,7 @@ SomeTable:
 	.long SomeTable_802F56C0
 	.long SomeTable_802F56C0
 	.long SomeTable_802F5440
+	.long SomeTable_802F56C0
 	.long SomeTable_802F56C0
 	.long SomeTable_802F56C0
 	.long SomeTable_802F56C0
@@ -916,31 +1093,33 @@ OneFloat:
 	.float 1.0
 
 FukidashiTable2:
-	.float 20.0, 32.0, 32.0, 12.0, 38.0, 33.0, 32.0, 32.0
-	.float 20.0, 34.0, 34.0, 12.0, 39.0, 35.0, 34.0, 34.0
-	.float 20.0, 29.0, 29.0, 11.0, 34.0, 29.0, 29.0, 29.0
-	.float 20.0, 29.0, 29.0, 11.0, 34.0, 29.0, 29.0, 29.0
+	.float 20.0, 32.0, 32.0, 12.0, 38.0, 33.0, 32.0, 32.0, 32.0
+	.float 20.0, 34.0, 34.0, 12.0, 39.0, 35.0, 34.0, 34.0, 34.0
+	.float 20.0, 29.0, 29.0, 11.0, 34.0, 29.0, 29.0, 29.0, 29.0
+	.float 20.0, 29.0, 29.0, 11.0, 34.0, 29.0, 29.0, 29.0, 29.0
 
 PlayerHeightsNormal:
-	.float 16.0, 27.0, 27.0, 12.0, 27.0, 27.0, 27.0, 27.0
+	.float 16.0, 27.0, 27.0, 12.0, 27.0, 27.0, 27.0, 27.0, 27.0
 
 PlayerHeightsDucking:
-	.float 13.0, 21.0, 21.0, 9.0, 21.0, 21.0, 21.0, 21.0
+	.float 13.0, 21.0, 21.0, 9.0, 21.0, 21.0, 21.0, 21.0, 21.0
 
 WtfEverTable:
-	.float 4.5, 10.0, 10.0, 1.0, 10.0, 9.0, 10.0, 10.0
+	.float 4.5, 10.0, 10.0, 1.0, 10.0, 9.0, 10.0, 10.0, 10.0
 
 YetAnotherTable:
-	.float 0.0, -4.0, -4.0, 4.0, -6.0, -2.0, -4.0, -4.0
+	.float 0.0, -4.0, -4.0, 4.0, -6.0, -2.0, -4.0, -4.0, -4.0
 
 WeirdScaleTable:
-	.float 16.0, 31.0, 31.0, 6.0, 34.0, 31.0, 31.0, 31.0
+	.float 16.0, 31.0, 31.0, 6.0, 34.0, 31.0, 31.0, 31.0, 31.0
 
+.align 4
 AsdfTable:
-	.byte 1, 2, 2, 0, 2, 2, 2, 2
+	.byte 1, 2, 2, 0, 2, 2, 2, 2, 2, 0, 0
 
+.align 4
 BlahTableOffsets:
-	.long 1, 2, 2, 0, 3, 2, 2, 2
+	.long 1, 2, 2, 0, 3, 2, 2, 2, 2, 0, 0
 
 PowerupScaleFloats:
 	.long 0xDEADBEEF, 0xDEADBEEF # padding
@@ -952,15 +1131,21 @@ PowerupScaleFloats:
 	.float 1.0
 	.float 1.0
 	.float 1.0
+	.float 1.0
 
 PowerupTextures:
 	.float 0.0
 	.float 1.0
 	.float 2.0
 	.float 3.0
+	.float 4.0
+	.float 5.0
 ToadTextures:
 	.long 0xDEADBEEF, 0xDEADBEEF
 	.float 7.0, 8.0, 6.0
+ToadBubbleTextures:
+	.long 0xDEADBEEF, 0xDEADBEEF
+	.float 9.0, 10.0, 6.0
 
 .global BrosArcFileName
 BrosArcFileName:
@@ -969,6 +1154,10 @@ BrosArcFileName:
 .global I_hammerArcFilename
 I_hammerArcFilename:
 	.string "I_hammer"
+
+.global I_bubbleArcFilename
+I_bubbleArcFilename:
+	.string "I_bubble"
 
 .global I_hammerResFile
 I_hammerResFile:
@@ -991,6 +1180,9 @@ SI_kinoko: .string "SI_kinoko"
 
 .global SI_hammer
 SI_hammer: .string "SI_hammer"
+
+.global SI_bubble
+SI_bubble: .string "SI_bubble"
 
 g3d: .string "g3d/"
 
@@ -1082,7 +1274,7 @@ StrongboxGiveBattleItem:
 
 .data
 IndexItemsForStockItem:
-.byte 0,1,2,3,5,6,4,7
+.byte 0,1,2,3,5,6,4,7,8
 
 
 SLGWindow: .string "A00_Window"
@@ -1094,6 +1286,7 @@ SLGBtn4: .string "B04_itemButton"
 SLGBtn5: .string "B05_itemButton"
 SLGBtn6: .string "B06_itemButton"
 SLGBtn7: .string "HammerGroup"
+SLGBtn8: .string "BubbleGroup"
 SLButtonBase00: .string "P_buttonBase_00"
 SLButtonBase01: .string "P_buttonBase_01"
 SLButtonBase02: .string "P_buttonBase_02"
@@ -1102,6 +1295,7 @@ SLButtonBase04: .string "P_buttonBase_04"
 SLButtonBase05: .string "P_buttonBase_05"
 SLButtonBase06: .string "P_buttonBase_06"
 SLButtonBase07: .string "P_buttonBase_07"
+SLButtonBase08: .string "P_buttonBase_08"
 SLIcon0: .string "P_iconKinoko_00"
 SLIcon1: .string "P_iconFlower_00"
 SLIcon2: .string "P_iconPro_00"
@@ -1110,6 +1304,7 @@ SLIcon4: .string "P_iconPen_00"
 SLIcon5: .string "P_mameKinoko_00"
 SLIcon6: .string "P_iconStar_00"
 SLIcon7: .string "P_iconHammer_00"
+SLIcon8: .string "P_iconBubble_00"
 SLIconPane0: .string "N_iconKinoko_00"
 SLIconPane1: .string "N_iconFlower_00"
 SLIconPane2: .string "N_iconPro_00"
@@ -1118,6 +1313,7 @@ SLIconPane4: .string "N_iconPen_00"
 SLIconPane5: .string "N_mameKinoko_00"
 SLIconPane6: .string "N_iconStar_00"
 SLIconPane7: .string "N_iconHammer_00"
+SLIconPane8: .string "N_iconBubble_00"
 .align 4
 SILayoutGroupNames:
 .long SLGWindow
@@ -1127,6 +1323,7 @@ SILayoutGroupNames:
 .long SLGBtn0,SLGBtn1,SLGBtn2,SLGBtn6,SLGBtn4,SLGBtn5,SLGBtn3
 .long SLGWindow
 .long SLGBtn7,SLGBtn7,SLGBtn7
+.long SLGBtn8,SLGBtn8,SLGBtn8
 SILayoutGroupIDs:
 .long 0
 .long 1,1,1,1,1,1,1
@@ -1135,16 +1332,17 @@ SILayoutGroupIDs:
 .long 4,4,4,4,4,4,4
 .long 5
 .long 1,3,4
+.long 1,3,4
 
 SILayoutButtonBases:
 .long SLButtonBase00,SLButtonBase01,SLButtonBase02,SLButtonBase06
-.long SLButtonBase04,SLButtonBase05,SLButtonBase03,SLButtonBase07
+.long SLButtonBase04,SLButtonBase05,SLButtonBase03,SLButtonBase07,SLButtonBase08
 SILayoutIconPictures:
 .long SLIcon0,SLIcon1,SLIcon2,SLIcon3
-.long SLIcon4,SLIcon5,SLIcon6,SLIcon7
+.long SLIcon4,SLIcon5,SLIcon6,SLIcon7,SLIcon8
 SILayoutIconPanes:
 .long SLIconPane0,SLIconPane1,SLIconPane2,SLIconPane3
-.long SLIconPane4,SLIconPane5,SLIconPane6,SLIconPane7
+.long SLIconPane4,SLIconPane5,SLIconPane6,SLIconPane7,SLIconPane8
 
 .text
 .global SILayoutGroupParams
@@ -1153,12 +1351,12 @@ SILayoutGroupParams:
 	ori r4, r4, SILayoutGroupNames@l
 	lis r5, SILayoutGroupIDs@h
 	ori r5, r5, SILayoutGroupIDs@l
-	li r6, 0x21
+	li r6, 0x24
 	blr
 
-# - 0x920 : Button Bases
-# - 0x940 : Icon Panes
-# - 0x960 : Icon Pictures
+# - 0x928 : Button Bases
+# - 0x94C : Icon Panes
+# - 0x970 : Icon Pictures
 .extern getPanes__Q23m2d13EmbedLayout_cCFPPCcPPQ34nw4r3lyt4Panei
 .extern getPictures__Q23m2d13EmbedLayout_cCFPPCcPPQ34nw4r3lyt7Picturei
 .extern ContinueFromSILayoutExtraStuffs
@@ -1168,22 +1366,22 @@ SILayoutExtraStuffs:
 	addi r3, r30, 0x74
 	lis r4, SILayoutButtonBases@h
 	ori r4, r4, SILayoutButtonBases@l
-	addi r5, r30, 0x920
-	li r6, 8
+	addi r5, r30, 0x928
+	li r6, 9
 	bl getPictures__Q23m2d13EmbedLayout_cCFPPCcPPQ34nw4r3lyt7Picturei
 
 	addi r3, r30, 0x74
 	lis r4, SILayoutIconPanes@h
 	ori r4, r4, SILayoutIconPanes@l
-	addi r5, r30, 0x940
-	li r6, 8
+	addi r5, r30, 0x94C
+	li r6, 9
 	bl getPanes__Q23m2d13EmbedLayout_cCFPPCcPPQ34nw4r3lyt4Panei
 
 	addi r3, r30, 0x74
 	lis r4, SILayoutIconPictures@h
 	ori r4, r4, SILayoutIconPictures@l
-	addi r5, r30, 0x960
-	li r6, 8
+	addi r5, r30, 0x970
+	li r6, 9
 	bl getPictures__Q23m2d13EmbedLayout_cCFPPCcPPQ34nw4r3lyt7Picturei
 
 	bl IsWideScreen__Fv
@@ -1203,11 +1401,11 @@ dontScaleDownSI:
 .global HideItemsByDefault
 .extern ContinueFromHideItemsByDefault
 HideItemsByDefault:
-	li r3, 8
+	li r3, 9
 	mtctr r3
 	mr r4, r31
 meNext:
-	lwz r9, 0x960(r4)
+	lwz r9, 0x970(r4)
 	lbz r5, 0xBB(r9)
 	rlwinm r5, r5, 0,24,30
 	stb r5, 0xBB(r9)
@@ -1231,7 +1429,7 @@ AddHammerPowerupFinalValue:
 
 .data
 OutputPowerupsByItemID:
-.long 1, 2, 4, 6, 5, 3, -1, 7
+.long 1, 2, 4, 6, 5, 3, -1, 7, 8
 
 .text
 .global FixStockItemEffectPlayer
@@ -1239,7 +1437,7 @@ FixStockItemEffectPlayer:
 	lwz r0, 0x8A0(r30)
 	slwi r0, r0, 2
 	add r5, r30, r0
-	lwz r28, 0x940(r5)
+	lwz r28, 0x94C(r5)
 	blr
 
 .global FixStockItemEffectPlayer2
@@ -1253,7 +1451,7 @@ FixMoreSIEffectRelatedCrap:
 	lwz r0, 0x8D0(r31)
 	slwi r0, r0, 2
 	add r3, r31, r0
-	lwz r29, 0x940(r3)
+	lwz r29, 0x94C(r3)
 	blr
 
 
@@ -1262,6 +1460,8 @@ FixMoreSIEffectRelatedCrap:
 .extern ContinueFromSIAddSound
 AddHammerSuitAddSound:
 	cmpwi r0, 7
+	beq _MakeSFISound
+	cmpwi r0, 8
 	beq _MakeSFISound
 	b ContinueFromSIAddSound
 	_MakeSFISound:
@@ -1276,20 +1476,31 @@ ResetHammerAnimOnOpen:
 	li r5, 0
 	bl resetAnim__Q23m2d13EmbedLayout_cFib
 	addi r3, r28, 0x74
+	li r4, 0x21
+	li r5, 0
+	bl resetAnim__Q23m2d13EmbedLayout_cFib
+	addi r3, r28, 0x74
 	b ContinueFromResetHammerAnimOnOpen
 
 .extern ChosenStartChoice
 .global PickHammerAsPossibleStartChoice
 PickHammerAsPossibleStartChoice:
-	lwz r0, 0x918(r30)
+	lwz r0, 0x91C(r30)
 	li r3, 6
 	cmpwi r0, 0
 	beq notGoodEnough
 	stw r3, 0x8A0(r30)
 	b ChosenStartChoice
 notGoodEnough:
-	lwz r0, 0x91C(r30)
+	lwz r0, 0x920(r30)
 	li r3, 7
+	cmpwi r0, 0
+	beq stillNotGoodEnough
+	stw r3, 0x8A0(r30)
+	b ChosenStartChoice
+stillNotGoodEnough:
+	lwz r0, 0x924(r30)
+	li r3, 8
 	cmpwi r0, 0
 	beq _ChosenStartChoice
 	stw r3, 0x8A0(r30)
@@ -1301,30 +1512,45 @@ notGoodEnough:
 ChooseOldButtonOffAnim:
 	cmpwi r4, 7
 	beq useHammerOffAnim
+	cmpwi r4, 8
+	beq useBubbleOffAnim
 	addi r4, r4, 0x16
 	blr
 useHammerOffAnim:
 	li r4, 0x20
+	blr
+useBubbleOffAnim:
+	li r4, 0x23
 	blr
 
 .global ChooseOldButtonOffAnim2
 ChooseOldButtonOffAnim2:
 	cmpwi r3, 7
 	beq useHammerOffAnim2
+	cmpwi r3, 8
+	beq useBubbleOffAnim2
 	addi r0, r3, 0x16
 	blr
 useHammerOffAnim2:
 	li r0, 0x20
+	blr
+useBubbleOffAnim2:
+	li r0, 0x23
 	blr
 
 .global ChooseButtonOnAnim
 ChooseButtonOnAnim:
 	cmpwi r4, 7
 	beq useHammerOnAnim
+	cmpwi r4, 8
+	beq useBubbleOnAnim
 	addi r4, r4, 1
 	blr
 useHammerOnAnim:
 	li r4, 0x1E
+	blr
+useBubbleOnAnim:
+	li r4, 0x21
 	blr
 
 .global DoSISelectCursor
@@ -1332,7 +1558,7 @@ useHammerOnAnim:
 DoSISelectCursor:
 	slwi r0, r0, 2
 	add r3, r3, r0
-	lwz r3, 0x920(r3)
+	lwz r3, 0x928(r3)
 	li r4, 0
 	li r5, 0
 	b UpdateSelectCursor
@@ -1342,10 +1568,15 @@ DoSISelectCursor:
 ChooseHitButtonAnim:
 	cmpwi r4, 7
 	beq useHammerHitAnim
+	cmpwi r4, 8
+	beq useBubbleHitAnim
 	addi r4, r4, 0xF
 	blr
 useHammerHitAnim:
 	li r4, 0x1F
+	blr
+useBubbleHitAnim:
+	li r4, 0x22
 	blr
 
 
@@ -1354,10 +1585,17 @@ useHammerHitAnim:
 .extern ContinueFromCalcPowerupResult
 UpdateCalcPowerupResult:
 	cmpwi r3, 7
-	bne cprIsDone
+	beq cprIsDoneHammer
+	cmpwi r3, 8
+	beq cprIsDoneBubble
+	b ContinueFromCalcPowerupResult
+cprIsDoneHammer:
 	li r6, 7
 	stb r0, 0xF(r1)
-cprIsDone:
+	b ContinueFromCalcPowerupResult
+cprIsDoneBubble:
+	li r6, 8
+	stb r0, 0xF(r1)
 	b ContinueFromCalcPowerupResult
 
 .global FixCalcPowerupResultForMushroom
@@ -1369,6 +1607,12 @@ FixCalcPowerupResultForMushroom:
 
 
 
+# - 0x288: Hammer value textbox
+# - 0x28C: Hammer X textbox
+# - 0x290: Hammer shadow
+# - 0x294: Bubble value textbox
+# - 0x298: Bubble X textbox
+# - 0x29C: Bubble shadow
 .global SISLayoutExtraStuffs
 .extern ContinueFromSISLayoutExtraStuffs
 .extern findTextBoxByName__Q23m2d17EmbedLayoutBase_cCFPCc
@@ -1378,19 +1622,37 @@ SISLayoutExtraStuffs:
 	lis r4, whatever_s@h
 	ori r4, r4, whatever_s@l
 	bl findTextBoxByName__Q23m2d17EmbedLayoutBase_cCFPCc
-	stw r3, 0x288(r30)
+	stw r3, 0x28C(r30)
 
 	addi r3, r30, 0x70
 	lis r4, fuck_brlyts@h
 	ori r4, r4, fuck_brlyts@l
 	bl findTextBoxByName__Q23m2d17EmbedLayoutBase_cCFPCc
-	stw r3, 0x284(r30)
+	stw r3, 0x288(r30)
 
 	addi r3, r30, 0x70
 	lis r4, im_tired_of_this@h
 	ori r4, r4, im_tired_of_this@l
 	bl findPictureByName__Q23m2d17EmbedLayoutBase_cCFPCc
-	stw r3, 0x28C(r30)
+	stw r3, 0x290(r30)
+
+	addi r3, r30, 0x70
+	lis r4, whenever_s@h
+	ori r4, r4, whenever_s@l
+	bl findTextBoxByName__Q23m2d17EmbedLayoutBase_cCFPCc
+	stw r3, 0x298(r30)
+
+	addi r3, r30, 0x70
+	lis r4, hail_brlyts@h
+	ori r4, r4, hail_brlyts@l
+	bl findTextBoxByName__Q23m2d17EmbedLayoutBase_cCFPCc
+	stw r3, 0x294(r30)
+
+	addi r3, r30, 0x70
+	lis r4, i_love_this@h
+	ori r4, r4, i_love_this@l
+	bl findPictureByName__Q23m2d17EmbedLayoutBase_cCFPCc
+	stw r3, 0x29C(r30)
 	
 	li r3, 1
 	b ContinueFromSISLayoutExtraStuffs
@@ -1399,6 +1661,9 @@ SISLayoutExtraStuffs:
 whatever_s: .string "whatever"
 fuck_brlyts: .string "fuck_brlyts"
 im_tired_of_this: .string "im_tired_of_this"
+whenever_s: .string "T_itemRest_16"
+hail_brlyts: .string "T_itemRest_17"
+i_love_this: .string "P_buttonBaseS_09"
 
 .text
 .global UpdateSIS
@@ -1412,24 +1677,25 @@ UpdateSIS:
 	# replicate this shit
 	lwz r0, 0x280(r25)
 	cmpwi r0, 0
-	lwz r3, 0x28C(r25)
+	lwz r3, 0x290(r25)
 	lbz r0, 0xBB(r3)
-	beq theresNone
+	beq theresNoHammer
 
 	li r4, 1
 	rlwinm r0, r0, 0,24,30
 	b changedBase
-theresNone:
+theresNoHammer:
 	li r4, 0
 	ori r0, r0, 1
 changedBase:
 	stb r0, 0xBB(r3)
 	slwi r29, r4, 2
 	addi r5, r1, 0x14
+
 	lwzx r27, r26, r29
 	li r4, 0
 	stw r27, 0x14(r1)
-	lwz r3, 0x284(r25)
+	lwz r3, 0x288(r25)
 	lwz r12, 0(r3)
 	lwz r12, 0x28(r12)
 	mtctr r12
@@ -1439,7 +1705,7 @@ changedBase:
 	addi r5, r1, 0x10
 	stw r29, 0x10(r1)
 	li r4, 2
-	lwz r3, 0x284(r25)
+	lwz r3, 0x288(r25)
 	lwz r12, 0(r3)
 	lwz r12, 0x28(r12)
 	mtctr r12
@@ -1447,7 +1713,7 @@ changedBase:
 
 	addi r5, r1, 0x14
 	li r4, 0
-	lwz r3, 0x288(r25)
+	lwz r3, 0x28C(r25)
 	lwz r12, 0(r3)
 	lwz r12, 0x28(r12)
 	mtctr r12
@@ -1455,14 +1721,77 @@ changedBase:
 
 	addi r5, r1, 0x10
 	li r4, 2
-	lwz r3, 0x288(r25)
+	lwz r3, 0x28C(r25)
 	lwz r12, 0(r3)
 	lwz r12, 0x28(r12)
 	mtctr r12
 	bctrl
 
-	lwz r5, 0x284(r25)
+	lwz r5, 0x288(r25)
 	addi r3, r25, 0x280
+	lis r4, ptrToTwo@h
+	ori r4, r4, ptrToTwo@l
+	li r6, 1
+	bl WriteNumberToTextBox__FPiPCiPQ34nw4r3lyt7TextBoxb
+
+
+
+	# replicate this shit another time
+	lwz r0, 0x284(r25)
+	cmpwi r0, 0
+	lwz r3, 0x29C(r25)
+	lbz r0, 0xBB(r3)
+	beq theresNoBubble
+
+	li r4, 1
+	rlwinm r0, r0, 0,24,30
+	b RedoThatShit
+theresNoBubble:
+	li r4, 0
+	ori r0, r0, 1
+RedoThatShit:
+	#here, redo it, bastard
+	stb r0, 0xBB(r3)
+	slwi r29, r4, 2
+	addi r5, r1, 0x14
+
+	lwzx r27, r26, r29
+	li r4, 0
+	stw r27, 0x14(r1)
+	lwz r3, 0x294(r25)
+	lwz r12, 0(r3)
+	lwz r12, 0x28(r12)
+	mtctr r12
+	bctrl
+
+	lwzx r29, r28, r29
+	addi r5, r1, 0x10
+	stw r29, 0x10(r1)
+	li r4, 2
+	lwz r3, 0x294(r25)
+	lwz r12, 0(r3)
+	lwz r12, 0x28(r12)
+	mtctr r12
+	bctrl
+
+	addi r5, r1, 0x14
+	li r4, 0
+	lwz r3, 0x298(r25)
+	lwz r12, 0(r3)
+	lwz r12, 0x28(r12)
+	mtctr r12
+	bctrl
+
+	addi r5, r1, 0x10
+	li r4, 2
+	lwz r3, 0x298(r25)
+	lwz r12, 0(r3)
+	lwz r12, 0x28(r12)
+	mtctr r12
+	bctrl
+
+	lwz r5, 0x294(r25)
+	addi r3, r25, 0x284
 	lis r4, ptrToTwo@h
 	ori r4, r4, ptrToTwo@l
 	li r6, 1
@@ -1472,30 +1801,53 @@ DontUpdateSIS:
 	addi r11, r1, 0x40
 	b ContinueFromUpdateSIS
 
+#thanks rsm
+.extern ContinueFromThatFix
+.global TryToFixThis
+TryToFixThis:
+	lbz r0, 0x152(r31)		#r0 = this->powerupId
+	cmpwi r0, 8				#if(r0 == 8)
+	beq StopBeingAnAss		# { StopBeingAnAss() }
+	lwz r0, 0x770(r31)		#else { r0 = this->current_player_model_id
+	b ContinueFromThatFix	# ContinueFromThatFix() }
+StopBeingAnAss:
+	li r0, 0				#r0 = 0
+	stw r0, 0x770(r31)		#this->current_player_model_id = r0
+	b ContinueFromThatFix	#ContinueFromThatFix()
+
 .data
 .align 4
 ptrToTwo: .long 2
 float0_85: .float 0.85
 
 .text
-.global SkawoHatesMe, SkawoStillHatesMe
+.global WMItem_AddBrres, WMItem_AddMdl0
 
-SkawoHatesMe:
+WMItem_AddBrres:
 	lwzx r4, r27, r0
 	cmpwi r0, 28
-	bnelr
-	lis r5, SolveMystery@h
-	ori r5, r5, SolveMystery@l
+	beq doFireFlowerBrres
+	cmpwi r0, 32
+	beq doFireFlowerBrres	
 	blr
-SkawoStillHatesMe:
+doFireFlowerBrres:
+	lis r5, FireflowerFileName@h
+	ori r5, r5, FireflowerFileName@l
+	blr
+WMItem_AddMdl0:
 	lwzx r4, r4, r0
 	cmpwi r0, 28
-	bnelr
-	lis r4, RewriteHistory@h
-	ori r4, r4, RewriteHistory@l
+	beq doFireFlowerMdl0
+	cmpwi r0, 32
+	beq doFireFlowerMdl0
 	blr
+doFireFlowerMdl0:
+	lis r4, FireflowerModelName@h
+	ori r4, r4, FireflowerModelName@l
+	blr
+
 .data
-SolveMystery: .string "g3d/I_fireflower.brres"
-RewriteHistory: .string "I_fireflower"
+FireflowerFileName: .string "g3d/I_fireflower.brres"
+FireflowerModelName: .string "I_fireflower"
 .align 4
 

@@ -3757,9 +3757,11 @@ class dStockItemShadow_c : public dBase_c {
 	nw4r::lyt::TextBox *textBoxes[14];
 	nw4r::lyt::Picture *buttonBases[7];
 	bool layoutLoaded, visible, needsUpdate;
-	int values[8];
+	int values[9];
 	nw4r::lyt::TextBox *hammerValue, *hammerX;
 	nw4r::lyt::Picture *hammerButtonBase;
+	nw4r::lyt::TextBox *bubbleValue, *bubbleX;
+	nw4r::lyt::Picture *bubbleButtonBase;
 };
 
 class dStockItem_c : public dBase_c {
@@ -3805,11 +3807,11 @@ class dStockItem_c : public dBase_c {
 	int someAnimID;
 	bool isPlayerActive[4], layoutLoaded, show, _8DE;
 
-	/*daWMItem_c*/void *newItemPtr[8];
-	int newCounts[8];
-	nw4r::lyt::Picture *newButtonBase[8];
-	nw4r::lyt::Pane *newIconPanes[8];
-	nw4r::lyt::Picture *newIconPictures[8];
+	/*daWMItem_c*/void *newItemPtr[9];
+	int newCounts[9];
+	nw4r::lyt::Picture *newButtonBase[9];
+	nw4r::lyt::Pane *newIconPanes[9];
+	nw4r::lyt::Picture *newIconPictures[9];
 
 	void setScalesOfSomeThings();
 	int getIconPictureIDforPlayer(int i);
